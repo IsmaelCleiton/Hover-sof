@@ -252,7 +252,7 @@ void calcSpeed()
 
 void showTitle()
 {
-  inAnimation = !inAnimation;
+  inAnimation = true;
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setFont(ArialMT_Plain_16);
@@ -264,7 +264,7 @@ void showTitle()
 
 void showTemp()
 {
-  inAnimation = !inAnimation;
+  inAnimation = true;
   randomSeed(analogRead(D4));
   int temp = random(-125, 22);
   for (int counter = 0; counter <= 100; counter++)
@@ -351,7 +351,7 @@ void getIR()
       break;
 
     case Key21::KEY_100_PLUS:
-      // TODO: YOUR CONTROL
+      inAnimation = false;
       break;
 
     case Key21::KEY_200_PLUS:
@@ -363,7 +363,7 @@ void getIR()
       break;
 
     case Key21::KEY_1:
-      inAnimation = !inAnimation;
+      inAnimation = true;
       display.clear();
       display.drawXbm(14, 16, 40, 48, sprites[16]);
       display.drawXbm(74, 16, 40, 48, sprites[17]);
