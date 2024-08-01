@@ -1,23 +1,22 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include "SSD1306Wire.h"
-#include "sprites.h"
-#include <DIYables_IRcontroller.h>
-#define REMOTEXY_MODE__ESP8266WIFI_LIB_POINT
-#include <ESP8266WiFi.h>
-#include <RemoteXY.h>
-#include <Ticker.h>
-#define IR_RECEIVER_PIN D5
-#define INA1 D0
-#define INA2 D1
-#define INB1 D2
-#define INB2 D3
+#include <Arduino.h>                         // Biblioteca do Arduino.
+#include "SSD1306Wire.h"                     // Biblioteca do protocolo de comunicação 12C, usado no Display Oled.
+#include "sprites.h"                         // Arquivo com os sprites dos olhinhos.
+#include <DIYables_IRcontroller.h>           // Biblioteca para uso do Controle e do sensor Infra vermelho.
+#define REMOTEXY_MODE__ESP8266WIFI_LIB_POINT // Define o modo de conexão do App RemoteXY.
+#include <ESP8266WiFi.h>                     // Biblioteca de para usar o Wifi do ESP8266.
+#include <RemoteXY.h>                        // Biblioteca do App RemoteXY.
+#include <Ticker.h>                          // Biblioteca para usar o Ticker.
+#define IR_RECEIVER_PIN D5                   // Define o pino D5 como o pino usado para receber os dados do sensor Infra vermelho
+#define INA1 D0                              // Define o Pino D0 como o pino A1A do drive do motor.
+#define INA2 D1                              // Define o Pino D1 como o pino A1B do drive do motor.
+#define INB1 D2                              // Define o Pino D2 como o pino B1A do drive do motor.
+#define INB2 D3                              // Define o Pino D3 como o pino B1B do drive do motor.
 // WIFI
-#define REMOTEXY_WIFI_SSID "martinha"
-#define REMOTEXY_WIFI_PASSWORD "martinha"
-#define REMOTEXY_SERVER_PORT 6377
+#define REMOTEXY_WIFI_SSID "martinha"     // Define o nome da rede WIFI.
+#define REMOTEXY_WIFI_PASSWORD "martinha" // Define a senha da rede.
+#define REMOTEXY_SERVER_PORT 6377         // Define a porta do server do App RemoteXY.
 // Distance Sensor
-#define SOUND_VELOCITY 0.034
+#define SOUND_VELOCITY 0.034 // Velocidade do som.
 #define trigPin D10
 #define echoPin D9
 // Configuração do RemoteXY
