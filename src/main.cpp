@@ -12,8 +12,8 @@
 #define INB1 D2                              // Define o Pino D2 como o pino B1A do drive do motor.
 #define INB2 D3                              // Define o Pino D3 como o pino B1B do drive do motor.
 // WIFI
-#define REMOTEXY_WIFI_SSID "martinha"     // Define o nome da rede WIFI.
-#define REMOTEXY_WIFI_PASSWORD "martinha" // Define a senha da rede.
+#define REMOTEXY_WIFI_SSID "ROVER ESB1-K"     // Define o nome da rede WIFI.
+#define REMOTEXY_WIFI_PASSWORD "ROVERESB1-K" // Define a senha da rede.
 #define REMOTEXY_SERVER_PORT 6377         // Define a porta do server do App RemoteXY.
 // Distance Sensor
 #define SOUND_VELOCITY 0.034 // Velocidade do som.
@@ -65,7 +65,7 @@ void showDistance();
 void showTitle();
 void showTemp();
 void showProgressBar();
-void getIRtest();
+void showNames();
 void piscada();
 void getEyes();
 void carForward();
@@ -108,11 +108,6 @@ void loop()
   }
   getIR();
   getEyes();
-  // getDistance();
-  //  if (distanceCm < 2 && distanceCm > 0)
-  //  {
-  //    carStop();
-  //  }
   moveRover();
   if (count == 2)
   {
@@ -120,6 +115,45 @@ void loop()
     flipper.attach(random(10), flip);
     count = 0;
   }
+}
+
+void showNames()
+{
+  inGraph = true;
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(ArialMT_Plain_16);
+  while(inGraph){
+  display.println("ANA JÚLIA");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("EDUARDO");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("ÉRILLY");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("IZADORA");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("PEDRO LUCAS");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("RICARDO");
+  display.display();
+  my_delay(300);
+  }
+  
 }
 
 void flip()
@@ -176,7 +210,7 @@ void my_delay(uint32_t ms)
     getIR();
     moveRover();
     getEyes();
-    ::delay(1); // if does not use the delay it does not work on ESP8266
+    ::delay(1);
     if (millis() - t >= ms)
       break;
   }
@@ -382,21 +416,6 @@ void showProgressBar()
   inGraph = false;
 }
 
-void getIRtest()
-{
-  inGraph = true;
-  while (inGraph)
-  {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_16);
-    display.println("TEST ");
-    display.println(irController.loop());
-    display.display();
-    my_delay(1);
-  }
-}
-
 void getIR()
 {
   Key21 key = irController.getKey();
@@ -406,7 +425,6 @@ void getIR()
     switch (key)
     {
     case Key21::KEY_CH_MINUS:
-      getIRtest();
       break;
 
     case Key21::KEY_CH:
@@ -451,7 +469,7 @@ void getIR()
       break;
 
     case Key21::KEY_0:
-      showTitle();
+      showNames();
       break;
 
     case Key21::KEY_1:
@@ -471,7 +489,7 @@ void getIR()
       break;
 
     case Key21::KEY_4:
-      // TODO: YOUR CONTROL
+      showTitle();
       break;
 
     case Key21::KEY_5:
