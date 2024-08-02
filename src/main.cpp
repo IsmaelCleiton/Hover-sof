@@ -1,38 +1,37 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include "SSD1306Wire.h"
-#include "sprites.h"
-#include <DIYables_IRcontroller.h>
-#define REMOTEXY_MODE__ESP8266WIFI_LIB_POINT
-#include <ESP8266WiFi.h>
-#include <RemoteXY.h>
-#include <Ticker.h>
-#define IR_RECEIVER_PIN D5
-#define INA1 D0
-#define INA2 D1
-#define INB1 D2
-#define INB2 D3
+#include <Arduino.h>                         // Biblioteca do Arduino.
+#include "SSD1306Wire.h"                     // Biblioteca do protocolo de comunicação 12C, usado no Display Oled.
+#include "sprites.h"                         // Arquivo com os sprites dos olhinhos.
+#include <DIYables_IRcontroller.h>           // Biblioteca para uso do Controle e do sensor Infra vermelho.
+#define REMOTEXY_MODE__ESP8266WIFI_LIB_POINT // Define o modo de conexão do App RemoteXY.
+#include <ESP8266WiFi.h>                     // Biblioteca de para usar o Wifi do ESP8266.
+#include <RemoteXY.h>                        // Biblioteca do App RemoteXY.
+#include <Ticker.h>                          // Biblioteca para usar o Ticker.
+#define IR_RECEIVER_PIN D5                   // Define o pino D5 como o pino usado para receber os dados do sensor Infra vermelho
+#define INA1 D0                              // Define o Pino D0 como o pino A1A do drive do motor.
+#define INA2 D1                              // Define o Pino D1 como o pino A1B do drive do motor.
+#define INB1 D2                              // Define o Pino D2 como o pino B1A do drive do motor.
+#define INB2 D3                              // Define o Pino D3 como o pino B1B do drive do motor.
 // WIFI
-#define REMOTEXY_WIFI_SSID "martinha"
-#define REMOTEXY_WIFI_PASSWORD "martinha"
-#define REMOTEXY_SERVER_PORT 6377
-
-// RemoteXY GUI configuration
+#define REMOTEXY_WIFI_SSID "ROVER ESB1-K"     // Define o nome da rede WIFI.
+#define REMOTEXY_WIFI_PASSWORD "ROVERESB1-K" // Define a senha da rede.
+#define REMOTEXY_SERVER_PORT 6377         // Define a porta do server do App RemoteXY.
+// Distance Sensor
+#define SOUND_VELOCITY 0.034 // Velocidade do som.
+#define trigPin D10
+#define echoPin D9
+// Configuração do RemoteXY
 #pragma pack(push, 1)
 uint8_t RemoteXY_CONF[] = // 34 bytes
     {255, 2, 0, 0, 0, 27, 0, 17, 0, 0, 0, 31, 2, 106, 200, 200, 84, 1, 1, 1,
      0, 5, 35, 133, 40, 40, 154, 35, 28, 28, 42, 177, 24, 31};
 
-// this structure defines all the variables and events of your control interface
+// Definição das variáveis do aplicativo RemoteXY
 struct
 {
 
-  // input variables
-  int8_t joystick_1_x; // from -100 to 100
-  int8_t joystick_1_y; // from -100 to 100
-
-  // other variable
-  uint8_t connect_flag; // =1 if wire connected, else =0
+  int8_t joystick_1_x;  // de -100 a 100
+  int8_t joystick_1_y;  // de -100 a 100
+  uint8_t connect_flag; // =1 se conectado, se não =0
 
 } RemoteXY;
 #pragma pack(pop)
@@ -41,34 +40,43 @@ struct
 SSD1306Wire display(0x3c, D6, D7);
 // Inicializa o Receptor Infra vermelho
 DIYables_IRcontroller_21 irController(IR_RECEIVER_PIN, 200);
-
-// Variaveis do controle via wifi
+// Inicializa o flipper
+Ticker flipper;
+// Variaveis
 bool _route[2] = {0, 0};
 byte _speed[2] = {0, 0};
-
 bool usingIR = false;
-
-Ticker flipper;
-
+long duration;
+float distanceCm;
 int count = 0;
-bool inAnimation = false;
+bool inGraph = false;
 
-void flip()
-{
-  ++count;
-}
-
-void drawEyes(u_int8_t *e1, u_int8_t *e2)
-{
-  if (inAnimation)
-  {
-    return;
-  }
-  display.clear();
-  display.drawXbm(14, 16, 40, 48, e1);
-  display.drawXbm(74, 16, 40, 48, e2);
-  display.display();
-}
+// Declarações das funções
+void calcSpeed();
+void getIR();
+void moveRover();
+void getEyes();
+void carStop();
+void getDistance();
+void my_delay(uint32_t);
+void flip();
+void drawEyes(u_int8_t *, u_int8_t *);
+void showDistance();
+void showTitle();
+void showTemp();
+void showProgressBar();
+void showNames();
+void piscada();
+void getEyes();
+void carForward();
+void carBackward();
+void carLeft();
+void carRight();
+void carStop();
+void carForwardLeft();
+void carForwardRight();
+void carBackwardLeft();
+void carBackwardRight();
 
 void setup()
 {
@@ -82,24 +90,127 @@ void setup()
   pinMode(INA2, OUTPUT);
   pinMode(INB1, OUTPUT);
   pinMode(INB2, OUTPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
   digitalWrite(INA1, LOW);
   digitalWrite(INA2, LOW);
   digitalWrite(INB1, LOW);
   digitalWrite(INB2, LOW);
   drawEyes(sprites[0], sprites[1]);
 }
+
+void loop()
+{
+  if (RemoteXY.connect_flag)
+  {
+    RemoteXY_Handler();
+    calcSpeed();
+  }
+  getIR();
+  getEyes();
+  moveRover();
+  if (count == 2)
+  {
+    piscada();
+    flipper.attach(random(10), flip);
+    count = 0;
+  }
+}
+
+void showNames()
+{
+  inGraph = true;
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(ArialMT_Plain_16);
+  while(inGraph){
+  display.println("ANA JÚLIA");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("EDUARDO");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("ÉRILLY");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("IZADORA");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("PEDRO LUCAS");
+  display.display();
+  my_delay(300);
+  if(!inGraph)
+    break;
+  display.println("RICARDO");
+  display.display();
+  my_delay(300);
+  }
+  
+}
+
+void flip()
+{
+  ++count;
+}
+
+void drawEyes(u_int8_t *e1, u_int8_t *e2)
+{
+  if (inGraph)
+  {
+    return;
+  }
+  display.clear();
+  display.drawXbm(14, 16, 40, 48, e1);
+  display.drawXbm(74, 16, 40, 48, e2);
+  display.display();
+}
+
+void getDistance()
+{
+  digitalWrite(trigPin, LOW);
+  my_delay(2);
+  digitalWrite(trigPin, HIGH);
+  my_delay(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distanceCm = duration * SOUND_VELOCITY / 2;
+}
+
+void showDistance()
+{
+  inGraph = true;
+  getDistance();
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(ArialMT_Plain_16);
+  display.println("Distancia(cm): ");
+  display.println(distanceCm);
+  display.display();
+}
+
 void my_delay(uint32_t ms)
 {
   uint32_t t = millis();
   while (true)
   {
 
-    RemoteXY_Handler();
-    calcSpeed();
+    if (RemoteXY.connect_flag)
+    {
+      RemoteXY_Handler();
+      calcSpeed();
+    }
     getIR();
     moveRover();
     getEyes();
-    ::delay(1); // if does not use the delay it does not work on ESP8266
+    ::delay(1);
     if (millis() - t >= ms)
       break;
   }
@@ -202,42 +313,42 @@ void moveRover()
 void calcSpeed()
 {
   if (RemoteXY.joystick_1_y > 50 && RemoteXY.joystick_1_x < 50 && RemoteXY.joystick_1_x > -50)
-  { // up
+  { // forward
     usingIR = false;
     carForward();
   }
   else if (RemoteXY.joystick_1_y < -50 && RemoteXY.joystick_1_x < 50 && RemoteXY.joystick_1_x > -50)
-  { // dw
+  { // backward
     usingIR = false;
     carBackward();
   }
   else if (RemoteXY.joystick_1_x < -50 && RemoteXY.joystick_1_y < 50 && RemoteXY.joystick_1_y > -50)
-  { // lf
+  { // left
     usingIR = false;
     carLeft();
   }
   else if (RemoteXY.joystick_1_x > 50 && RemoteXY.joystick_1_y < 50 && RemoteXY.joystick_1_y > -50)
-  { // rt
+  { // right
     usingIR = false;
     carRight();
   }
   else if (RemoteXY.joystick_1_y > 50 && RemoteXY.joystick_1_x < -50)
-  { // uplf
+  { // forward left
     usingIR = false;
     carForwardLeft();
   }
   else if (RemoteXY.joystick_1_y > 50 && RemoteXY.joystick_1_x > 50)
-  { // uprt
+  { // forward right
     usingIR = false;
     carForwardRight();
   }
   else if (RemoteXY.joystick_1_y < -50 && RemoteXY.joystick_1_x < -50)
-  { // dwlf
+  { // backward left
     usingIR = false;
     carBackwardLeft();
   }
   else if (RemoteXY.joystick_1_y < -50 && RemoteXY.joystick_1_x > 50)
-  { // dwrt
+  { // backward right
     usingIR = false;
     carBackwardRight();
   }
@@ -252,7 +363,7 @@ void calcSpeed()
 
 void showTitle()
 {
-  inAnimation = true;
+  inGraph = true;
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setFont(ArialMT_Plain_16);
@@ -264,7 +375,7 @@ void showTitle()
 
 void showTemp()
 {
-  inAnimation = true;
+  inGraph = true;
   randomSeed(analogRead(D4));
   int temp = random(-125, 22);
   for (int counter = 0; counter <= 100; counter++)
@@ -276,7 +387,7 @@ void showTemp()
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.drawString(64, 15, String(counter) + "%");
     display.display();
-    my_delay(5);
+    my_delay(2);
   }
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -290,7 +401,7 @@ void showTemp()
 
 void showProgressBar()
 {
-  inAnimation = true;
+  inGraph = true;
   for (int counter = 0; counter <= 100; counter++)
   {
     display.clear();
@@ -302,7 +413,7 @@ void showProgressBar()
     display.display();
     my_delay(10);
   }
-  inAnimation = false;
+  inGraph = false;
 }
 
 void getIR()
@@ -314,11 +425,10 @@ void getIR()
     switch (key)
     {
     case Key21::KEY_CH_MINUS:
-      // TODO: YOUR CONTROL
       break;
 
     case Key21::KEY_CH:
-      // TODO: YOUR CONTROL
+      showDistance();
       break;
 
     case Key21::KEY_CH_PLUS:
@@ -351,7 +461,7 @@ void getIR()
       break;
 
     case Key21::KEY_100_PLUS:
-      inAnimation = false;
+      inGraph = false;
       break;
 
     case Key21::KEY_200_PLUS:
@@ -359,11 +469,11 @@ void getIR()
       break;
 
     case Key21::KEY_0:
-      showTitle();
+      showNames();
       break;
 
     case Key21::KEY_1:
-      inAnimation = true;
+      inGraph = true;
       display.clear();
       display.drawXbm(14, 16, 40, 48, sprites[16]);
       display.drawXbm(74, 16, 40, 48, sprites[17]);
@@ -379,7 +489,7 @@ void getIR()
       break;
 
     case Key21::KEY_4:
-      // TODO: YOUR CONTROL
+      showTitle();
       break;
 
     case Key21::KEY_5:
@@ -410,11 +520,11 @@ void getIR()
 
 void piscada()
 {
-  if (inAnimation)
+  if (inGraph)
   {
     return;
   }
-  inAnimation = true;
+  inGraph = true;
   display.clear();
   display.drawXbm(14, 16, 40, 48, sprites[0]);
   display.drawXbm(74, 16, 40, 48, sprites[1]);
@@ -459,8 +569,7 @@ void piscada()
   display.drawXbm(14, 16, 40, 48, sprites[0]);
   display.drawXbm(74, 16, 40, 48, sprites[1]);
   display.display();
-  my_delay(500);
-  inAnimation = false;
+  inGraph = false;
 }
 
 void getEyes()
@@ -495,20 +604,5 @@ void getEyes()
       drawEyes(sprites[12], sprites[13]); // forward
       return;
     }
-  }
-}
-
-void loop()
-{
-  RemoteXY_Handler();
-  calcSpeed();
-  getIR();
-  getEyes();
-  moveRover();
-  if (count == 2)
-  {
-    piscada();
-    flipper.attach(random(10), flip);
-    count = 0;
   }
 }
